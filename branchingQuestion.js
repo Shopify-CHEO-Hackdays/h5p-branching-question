@@ -11,6 +11,7 @@ H5P.BranchingQuestion = (function ($) {
     this.initialTime = parameters.behaviour;
     this.timeRemaining = this.initialTime;
     this.started = false;
+    this.timerInterval = null;
 
     /**
      * Get closest ancestor of DOM element that matches selector.
@@ -355,7 +356,7 @@ H5P.BranchingQuestion = (function ($) {
       context.strokeStyle = "green";
       context.beginPath();
       context.arc(150, 75, 50, totalLength * percentComplete, totalLength);
-      context.lineWidth = 50;
+      context.lineWidth = 10;
       context.stroke();
       context.strokeStyle = "gray";
       context.beginPath();
@@ -368,15 +369,17 @@ H5P.BranchingQuestion = (function ($) {
     self.on("domChanged", (e) => {
       if (e.data.$target[0].className === "h5p-branching-question-wrapper" && !this.started) {
         this.started = true;
-        const timerInterval = setInterval(() => {
+        this.timerInterval = setInterval(() => {
           const canvas = document.querySelector('canvas');
           updateCanvas(canvas, this.initialTime, parseFloat(this.timeRemaining.toFixed(1)));
           console.log(this.timeRemaining.toFixed(1));
-          if (this.timeRemaining.toFixed(1) === "0.0") clearInterval(timerInterval);
+          if (this.timeRemaining.toFixed(1) === "0.0") clearInterval(this.timerInterval);
           this.timeRemaining -= .1;
         }, 100);
       }
     });
+
+    self.on('navigated', () => clearInterval(this.timerInterval));
 
     self.attach = function ($container) {
       // Disable back button of underlying library screen
