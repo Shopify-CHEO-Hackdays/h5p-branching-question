@@ -19,10 +19,17 @@
   width: 100%;
 }
 
-.h5p-multichoice-dropdown-select {
+.h5p-branching-question-dropdown-select {
   width: 100%;
+  height: 2em;
+  margin-top: 1em;
+}
+
+.h5p-branching-question-input {
+  width: 25rem;
+  margin-right: 2em;
   height: 2rem;
-  margin-top: 1rem;
+  font-size: 1em;
 }
 
 .h5p-branching-question-title {

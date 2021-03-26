@@ -64,6 +64,9 @@ H5P.BranchingQuestion = (function ($) {
     var createAlternativesInput = function (alternatives, wrapper) {
       const dropdownWrapper = document.createElement("div");
       const alternativesDropdown = document.createElement("input");
+      alternativesDropdown.classList.add(
+        "h5p-branching-question-input"
+      );
 
       alternativesDropdown.addEventListener("input", function (event) {
         console.log("change value");
@@ -151,7 +154,7 @@ H5P.BranchingQuestion = (function ($) {
       const dropdownWrapper = document.createElement("div");
       const alternativesDropdown = document.createElement("select");
       alternativesDropdown.id = "alternativesDropdown";
-      alternativesDropdown.classList.add("h5p-multichoice-dropdown-select");
+      alternativesDropdown.classList.add("h5p-branching-question-dropdown-select");
 
       alternativesDropdown.onchange = function (event) {
         console.log("change value");
