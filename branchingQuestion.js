@@ -1,5 +1,11 @@
 const DROPDOWN_COUNT = 1;
 
+const QuestionType = Object.freeze({
+  MULTIPLE_CHOICE: "multi",
+  NUMERIC: "numeric",
+  FILL_IN_THE_BLANK: "textual",
+});
+
 H5P.BranchingQuestion = (function ($) {
   function BranchingQuestion(parameters) {
     var self = this;
@@ -56,8 +62,87 @@ H5P.BranchingQuestion = (function ($) {
     });
 
     var createAlternativesInput = function (alternatives, wrapper) {
-      const input = document.createElement("input");
-      input.oninput = function (event) {};
+      const dropdownWrapper = document.createElement("div");
+      const alternativesDropdown = document.createElement("input");
+
+      alternativesDropdown.addEventListener("input", function (event) {
+        console.log("change value");
+        console.log(event.target.value);
+        dropdownValue = event.target.value;
+      });
+
+      submitButton = document.createElement("button");
+      submitButton.onclick = (e) => {
+        let idx = undefined;
+        alternatives.forEach((altParams, i) => {
+          if (altParams.text === dropdownValue) {
+            idx = i;
+          }
+        });
+
+        if (!idx) {
+          return;
+        }
+        const { nextContentId, feedback } = alternatives[idx];
+
+        // Create feedback screen if it exists
+        let hasFeedback =
+          feedback &&
+          !!(
+            (feedback.title && feedback.title.trim()) ||
+            (feedback.subtitle && feedback.subtitle.trim()) ||
+            feedback.image
+          );
+
+        const feedbackScreen =
+          hasFeedback &&
+          nextContentId !== -1 &&
+          createFeedbackScreen(feedback, nextContentId, idx);
+
+        hasFeedback =
+          feedback && !!(hasFeedback || feedback.endScreenScore !== undefined);
+
+        if (feedbackScreen) {
+          console.log("feedback defined");
+          if (self.container) {
+            self.container.classList.add(
+              "h5p-branching-scenario-feedback-dialog"
+            );
+          }
+          wrapper.innerHTML = "";
+          wrapper.appendChild(feedbackScreen);
+
+          const proceedButton = feedbackScreen.querySelectorAll("button")[0];
+          proceedButton.focus();
+
+          self.triggerXAPI("interacted");
+        } else {
+          const nextScreen = {
+            nextContentId,
+            chosenAlternative: idx,
+          };
+
+          const currentAltParams =
+            parameters.branchingQuestion.alternatives[idx];
+          const currentAltHasFeedback = !!(
+            currentAltParams.feedback.title ||
+            currentAltParams.feedback.subtitle ||
+            currentAltParams.feedback.image ||
+            currentAltParams.feedback.endScreenScore !== undefined
+          );
+
+          if (idx >= 0 && currentAltHasFeedback) {
+            nextScreen.feedback = currentAltParams.feedback;
+          }
+
+          self.trigger("navigated", nextScreen);
+        }
+      };
+
+      dropdownWrapper.appendChild(alternativesDropdown);
+      dropdownWrapper.appendChild(submitButton);
+
+      return dropdownWrapper;
     };
 
     var createAlternativesDropdown = function (alternatives, wrapper) {
@@ -114,7 +199,6 @@ H5P.BranchingQuestion = (function ($) {
           }
           wrapper.innerHTML = "";
           wrapper.appendChild(feedbackScreen);
-          answered = index;
 
           const proceedButton = feedbackScreen.querySelectorAll("button")[0];
           proceedButton.focus();
@@ -135,7 +219,7 @@ H5P.BranchingQuestion = (function ($) {
             currentAltParams.feedback.endScreenScore !== undefined
           );
 
-          if (dropdownValue >= 0 && currentAltHasFeedback) {
+          if (idx >= 0 && currentAltHasFeedback) {
             nextScreen.feedback = currentAltParams.feedback;
           }
 
@@ -269,10 +353,13 @@ H5P.BranchingQuestion = (function ($) {
       questionWrapper.appendChild(title);
 
       const alternatives = parameters.branchingQuestion.alternatives || [];
+      const isInput =
+        parameters.branchingQuestion.questionType ===
+        QuestionType.FILL_IN_THE_BLANK;
       const useDropdown = alternatives.length > DROPDOWN_COUNT;
 
       const optionsWrapper = useDropdown
-        ? createAlternativesDropdown(alternatives, wrapper)
+        ? createAlternativesInput(alternatives, wrapper)
         : createAlternativesList(alternatives, wrapper);
 
       console.log("options wrapper:", optionsWrapper);
