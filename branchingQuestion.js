@@ -1,6 +1,6 @@
-const DROPDOWN_COUNT = 4;
+const DROPDOWN_COUNT = 1;
 
-H5P.BranchingQuestion = (function () {
+H5P.BranchingQuestion = (function ($) {
   function BranchingQuestion(parameters) {
     var self = this;
     self.firstFocusable;
@@ -8,6 +8,7 @@ H5P.BranchingQuestion = (function () {
     H5P.EventDispatcher.call(self);
     this.container = null;
     let answered;
+    var dropdownValue = 0;
 
     /**
      * Get closest ancestor of DOM element that matches selector.
@@ -50,22 +51,105 @@ H5P.BranchingQuestion = (function () {
       return wrapper;
     };
 
-    var createAlternativesDropdown = function (alternatives) {
-      const alternativesDropdown = document.createElement("select");
+    $(document).ready(function () {
+      console.log("ready!");
+    });
 
-      alternatives.forEach((altParams) => {
-        const alternative = createAlternativeContainer(altParams.text);
+    var createAlternativesInput = function (alternatives, wrapper) {
+      const input = document.createElement("input");
+      input.oninput = function (event) {};
+    };
+
+    var createAlternativesDropdown = function (alternatives, wrapper) {
+      const dropdownWrapper = document.createElement("div");
+      const alternativesDropdown = document.createElement("select");
+      alternativesDropdown.id = "alternativesDropdown";
+      alternativesDropdown.classList.add("h5p-multichoice-dropdown-select");
+
+      alternativesDropdown.onchange = function (event) {
+        console.log("change value");
+        console.log(event.target.value);
+        dropdownValue = event.target.value;
+      };
+
+      alternatives.forEach((altParams, idx) => {
+        // const alternative = createAlternativeContainer(altParams.text);
 
         const option = document.createElement("option");
-        option.appendChild(alternative);
+        option.value = idx;
+        option.label = altParams.text;
+
+        // option.appendChild(alternative);
         alternativesDropdown.appendChild(option);
       });
 
-      alternativesDropdown.classList.add("h5p-multichoice-dropdown-select")
-      return alternativesDropdown;
+      submitButton = document.createElement("button");
+      submitButton.onclick = (e) => {
+        const idx = dropdownValue;
+        const { nextContentId, feedback } = alternatives[idx];
+
+        // Create feedback screen if it exists
+        let hasFeedback =
+          feedback &&
+          !!(
+            (feedback.title && feedback.title.trim()) ||
+            (feedback.subtitle && feedback.subtitle.trim()) ||
+            feedback.image
+          );
+
+        const feedbackScreen =
+          hasFeedback &&
+          nextContentId !== -1 &&
+          createFeedbackScreen(feedback, nextContentId, idx);
+
+        hasFeedback =
+          feedback && !!(hasFeedback || feedback.endScreenScore !== undefined);
+
+        if (feedbackScreen) {
+          console.log("feedback defined");
+          if (self.container) {
+            self.container.classList.add(
+              "h5p-branching-scenario-feedback-dialog"
+            );
+          }
+          wrapper.innerHTML = "";
+          wrapper.appendChild(feedbackScreen);
+          answered = index;
+
+          const proceedButton = feedbackScreen.querySelectorAll("button")[0];
+          proceedButton.focus();
+
+          self.triggerXAPI("interacted");
+        } else {
+          const nextScreen = {
+            nextContentId,
+            chosenAlternative: idx,
+          };
+
+          const currentAltParams =
+            parameters.branchingQuestion.alternatives[idx];
+          const currentAltHasFeedback = !!(
+            currentAltParams.feedback.title ||
+            currentAltParams.feedback.subtitle ||
+            currentAltParams.feedback.image ||
+            currentAltParams.feedback.endScreenScore !== undefined
+          );
+
+          if (dropdownValue >= 0 && currentAltHasFeedback) {
+            nextScreen.feedback = currentAltParams.feedback;
+          }
+
+          self.trigger("navigated", nextScreen);
+        }
+      };
+
+      dropdownWrapper.appendChild(alternativesDropdown);
+      dropdownWrapper.appendChild(submitButton);
+
+      return dropdownWrapper;
     };
 
-    var createAlternativesList = function (alternatives) {
+    var createAlternativesList = function (alternatives, wrapper) {
       const alternativesList = document.createElement("div");
 
       alternatives.forEach((altParams, index, array) => {
@@ -113,6 +197,7 @@ H5P.BranchingQuestion = (function () {
 
         alternative.onclick = function (e) {
           if (this.feedbackScreen !== undefined) {
+            console.log("feedback defined");
             if (self.container) {
               self.container.classList.add(
                 "h5p-branching-scenario-feedback-dialog"
@@ -144,7 +229,7 @@ H5P.BranchingQuestion = (function () {
             }
             answered = index2;
 
-            var nextScreen = {
+            const nextScreen = {
               nextContentId: this.nextContentId,
               chosenAlternative: index2,
             };
@@ -161,6 +246,8 @@ H5P.BranchingQuestion = (function () {
             if (index2 >= 0 && currentAltHasFeedback) {
               nextScreen.feedback = currentAltParams.feedback;
             }
+            console.log("alternative multiple choice nextScreen:");
+            console.log(nextScreen);
             self.trigger("navigated", nextScreen);
           }
         };
@@ -185,8 +272,8 @@ H5P.BranchingQuestion = (function () {
       const useDropdown = alternatives.length > DROPDOWN_COUNT;
 
       const optionsWrapper = useDropdown
-        ? createAlternativesDropdown(alternatives)
-        : createAlternativesList(alternatives);
+        ? createAlternativesDropdown(alternatives, wrapper)
+        : createAlternativesList(alternatives, wrapper);
 
       console.log("options wrapper:", optionsWrapper);
       questionWrapper.appendChild(optionsWrapper);
@@ -405,4 +492,4 @@ H5P.BranchingQuestion = (function () {
   }
 
   return BranchingQuestion;
-})();
+})(H5P.jQuery);
