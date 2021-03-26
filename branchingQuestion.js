@@ -79,11 +79,13 @@ H5P.BranchingQuestion = (function ($) {
             idx = i;
           }
         });
-
-        if (!idx) {
+        console.log(idx);
+        if (idx === undefined) {
           return;
         }
+
         const { nextContentId, feedback } = alternatives[idx];
+        console.log(alternatives[idx]);
 
         // Create feedback screen if it exists
         let hasFeedback =
