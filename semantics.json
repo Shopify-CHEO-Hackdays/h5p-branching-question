@@ -28,7 +28,7 @@
         "name": "alternatives",
         "type": "list",
         "importance": "high",
-        "label": "Available alternatives",
+        "label": "Available alternativees",
         "entity": "alternative",
         "min": 2,
         "defaultNum": 2,

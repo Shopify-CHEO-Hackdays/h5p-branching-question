@@ -1,5 +1,6 @@
-H5P.BranchingQuestion = (function () {
+const DROPDOWN_COUNT = 4;
 
+H5P.BranchingQuestion = (function () {
   function BranchingQuestion(parameters) {
     var self = this;
     self.firstFocusable;
@@ -22,7 +23,9 @@ H5P.BranchingQuestion = (function () {
         return null;
       }
       if (!Element.prototype.matches) {
-        Element.prototype.matches = Element.prototype.msMatchesSelector || Element.prototype.webkitMatchesSelector;
+        Element.prototype.matches =
+          Element.prototype.msMatchesSelector ||
+          Element.prototype.webkitMatchesSelector;
       }
 
       do {
@@ -30,36 +33,41 @@ H5P.BranchingQuestion = (function () {
           return element;
         }
         element = element.parentElement || element.parentNode;
-      }
-      while (element !== null && element.nodeType === 1);
+      } while (element !== null && element.nodeType === 1);
       return null;
     };
 
     var createWrapper = function () {
-      var wrapper = document.createElement('div');
-      wrapper.classList.add('h5p-branching-question');
+      var wrapper = document.createElement("div");
+      wrapper.classList.add("h5p-branching-question");
 
-      var icon = document.createElement('img');
-      icon.classList.add('h5p-branching-question-icon');
-      icon.src = self.getLibraryFilePath('branching-question-icon.svg');
+      var icon = document.createElement("img");
+      icon.classList.add("h5p-branching-question-icon");
+      icon.src = self.getLibraryFilePath("branching-question-icon.svg");
 
       wrapper.appendChild(icon);
 
       return wrapper;
     };
 
-    var appendMultiChoiceSection = function (parameters, wrapper) {
-      var questionWrapper = document.createElement('div');
-      questionWrapper.classList.add('h5p-multichoice-wrapper');
+    var createAlternativesDropdown = function (alternatives) {
+      const alternativesDropdown = document.createElement("select");
 
-      var title = document.createElement('div');
-      title.classList.add('h5p-branching-question-title');
-      title.innerHTML = parameters.branchingQuestion.question;
+      alternatives.forEach((altParams) => {
+        const alternative = createAlternativeContainer(altParams.text);
 
-      questionWrapper.appendChild(title);
+        const option = document.createElement("option");
+        option.appendChild(alternative);
+        alternativesDropdown.appendChild(option);
+      });
 
-      const alternatives = parameters.branchingQuestion.alternatives || [] ;
-      alternatives.forEach(function (altParams, index, array) {
+      return alternativesDropdown;
+    };
+
+    var createAlternativesList = function (alternatives) {
+      const alternativesList = document.createElement("div");
+
+      alternatives.forEach((altParams, index, array) => {
         const alternative = createAlternativeContainer(altParams.text);
 
         if (index === 0) {
@@ -73,23 +81,30 @@ H5P.BranchingQuestion = (function () {
         alternative.nextContentId = altParams.nextContentId;
 
         // Create feedback screen if it exists
-        const hasFeedback = altParams.feedback && !!(
-          altParams.feedback.title && altParams.feedback.title.trim() ||
-          altParams.feedback.subtitle && altParams.feedback.subtitle.trim() ||
-          altParams.feedback.image
-        );
+        const hasFeedback =
+          altParams.feedback &&
+          !!(
+            (altParams.feedback.title && altParams.feedback.title.trim()) ||
+            (altParams.feedback.subtitle &&
+              altParams.feedback.subtitle.trim()) ||
+            altParams.feedback.image
+          );
         if (hasFeedback && altParams.nextContentId !== -1) {
           alternative.feedbackScreen = createFeedbackScreen(
             altParams.feedback,
             alternative.nextContentId,
             index
           );
-          alternative.proceedButton = alternative.feedbackScreen.querySelectorAll('button')[0];
+          alternative.proceedButton = alternative.feedbackScreen.querySelectorAll(
+            "button"
+          )[0];
         }
-        alternative.hasFeedback = altParams.feedback && !!(hasFeedback || altParams.feedback.endScreenScore !== undefined);
+        alternative.hasFeedback =
+          altParams.feedback &&
+          !!(hasFeedback || altParams.feedback.endScreenScore !== undefined);
         alternative.feedback = altParams.feedback;
 
-        alternative.addEventListener('keyup', function (event) {
+        alternative.addEventListener("keyup", function (event) {
           if (event.which === 13 || event.which === 32) {
             this.click();
           }
@@ -98,19 +113,27 @@ H5P.BranchingQuestion = (function () {
         alternative.onclick = function (e) {
           if (this.feedbackScreen !== undefined) {
             if (self.container) {
-              self.container.classList.add('h5p-branching-scenario-feedback-dialog');
+              self.container.classList.add(
+                "h5p-branching-scenario-feedback-dialog"
+              );
             }
-            wrapper.innerHTML = '';
+            wrapper.innerHTML = "";
             wrapper.appendChild(this.feedbackScreen);
             answered = index;
             this.proceedButton.focus();
-            self.triggerXAPI('interacted');
-          }
-          else {
-
-            var currentAlt = e.target.classList.contains('.h5p-branching-question-alternative') ?
-              e.target : getClosestParent(e.target, '.h5p-branching-question-alternative');
-            var alts = questionWrapper.querySelectorAll('.h5p-branching-question-alternative');
+            self.triggerXAPI("interacted");
+          } else {
+            var currentAlt = e.target.classList.contains(
+              ".h5p-branching-question-alternative"
+            )
+              ? e.target
+              : getClosestParent(
+                  e.target,
+                  ".h5p-branching-question-alternative"
+                );
+            var alts = alternativesList.querySelectorAll(
+              ".h5p-branching-question-alternative"
+            );
             var index2;
             for (var i = 0; i < alts.length; i++) {
               if (alts[i] === currentAlt) {
@@ -125,26 +148,58 @@ H5P.BranchingQuestion = (function () {
               chosenAlternative: index2,
             };
 
-            const currentAltParams = parameters.branchingQuestion.alternatives[index2];
-            const currentAltHasFeedback = !!(currentAltParams.feedback.title
-              || currentAltParams.feedback.subtitle
-              || currentAltParams.feedback.image
-              || currentAltParams.feedback.endScreenScore !== undefined
+            const currentAltParams =
+              parameters.branchingQuestion.alternatives[index2];
+            const currentAltHasFeedback = !!(
+              currentAltParams.feedback.title ||
+              currentAltParams.feedback.subtitle ||
+              currentAltParams.feedback.image ||
+              currentAltParams.feedback.endScreenScore !== undefined
             );
 
             if (index2 >= 0 && currentAltHasFeedback) {
               nextScreen.feedback = currentAltParams.feedback;
             }
-            self.trigger('navigated', nextScreen);
+            self.trigger("navigated", nextScreen);
           }
         };
-        questionWrapper.appendChild(alternative);
+
+        alternativesList.appendChild(alternative);
       });
+
+      return alternativesList;
+    };
+
+    var appendMultiChoiceSection = function (parameters, wrapper) {
+      var questionWrapper = document.createElement("div");
+      questionWrapper.classList.add("h5p-multichoice-wrapper");
+
+      var title = document.createElement("div");
+      title.classList.add("h5p-branching-question-title");
+      title.innerHTML = parameters.branchingQuestion.question;
+
+      questionWrapper.appendChild(title);
+
+      const alternatives = parameters.branchingQuestion.alternatives || [];
+      const useDropdown = alternatives.length > DROPDOWN_COUNT;
+
+      const optionsWrapper = useDropdown
+        ? createAlternativesDropdown(alternatives)
+        : createAlternativesList(alternatives);
+
+      console.log("options wrapper:", optionsWrapper);
+      questionWrapper.appendChild(optionsWrapper);
 
       // Add alternative to go back
       const currentId = self.parent.getUserPath().slice(-1)[0] || -1;
-      if (currentId >= 0 && self.parent.canEnableBackButton(currentId) === true && self.parent.getUserPath().length > 1) {
-        const alternativeBack = self.createAlternativeBackContainer(self.parent.params.l10n.backButtonText);
+      if (
+        currentId >= 0 &&
+        self.parent.canEnableBackButton(currentId) === true &&
+        self.parent.getUserPath().length > 1
+      ) {
+        const alternativeBack = self.createAlternativeBackContainer(
+          self.parent.params.l10n.backButtonText
+        );
         questionWrapper.appendChild(alternativeBack);
       }
 
@@ -153,56 +208,63 @@ H5P.BranchingQuestion = (function () {
     };
 
     var createAlternativeContainer = function (text) {
-      var wrapper = document.createElement('div');
-      wrapper.classList.add('h5p-branching-question-alternative');
+      var wrapper = document.createElement("div");
+      wrapper.classList.add("h5p-branching-question-alternative");
       wrapper.tabIndex = 0;
 
-      var alternativeText = document.createElement('p');
+      var alternativeText = document.createElement("p");
       alternativeText.innerHTML = text;
 
       wrapper.appendChild(alternativeText);
       return wrapper;
     };
 
-    var createFeedbackScreen = function (feedback, nextContentId, chosenAlternativeIndex) {
-
-      var wrapper = document.createElement('div');
-      wrapper.classList.add('h5p-branching-question');
-      wrapper.classList.add(feedback.image !== undefined ? 'h5p-feedback-has-image' : 'h5p-feedback-default');
+    var createFeedbackScreen = function (
+      feedback,
+      nextContentId,
+      chosenAlternativeIndex
+    ) {
+      var wrapper = document.createElement("div");
+      wrapper.classList.add("h5p-branching-question");
+      wrapper.classList.add(
+        feedback.image !== undefined
+          ? "h5p-feedback-has-image"
+          : "h5p-feedback-default"
+      );
 
       if (feedback.image !== undefined && feedback.image.path !== undefined) {
-        var imageContainer = document.createElement('div');
-        imageContainer.classList.add('h5p-branching-question');
-        imageContainer.classList.add('h5p-feedback-image');
-        var image = document.createElement('img');
+        var imageContainer = document.createElement("div");
+        imageContainer.classList.add("h5p-branching-question");
+        imageContainer.classList.add("h5p-feedback-image");
+        var image = document.createElement("img");
         image.src = H5P.getPath(feedback.image.path, self.contentId);
         imageContainer.appendChild(image);
         wrapper.appendChild(imageContainer);
       }
 
-      var feedbackContent = document.createElement('div');
-      feedbackContent.classList.add('h5p-branching-question');
-      feedbackContent.classList.add('h5p-feedback-content');
+      var feedbackContent = document.createElement("div");
+      feedbackContent.classList.add("h5p-branching-question");
+      feedbackContent.classList.add("h5p-feedback-content");
 
-      var feedbackText = document.createElement('div');
-      feedbackText.classList.add('h5p-feedback-content-content');
+      var feedbackText = document.createElement("div");
+      feedbackText.classList.add("h5p-feedback-content-content");
       feedbackContent.appendChild(feedbackText);
 
-      var title = document.createElement('h1');
-      title.innerHTML = feedback.title || '';
+      var title = document.createElement("h1");
+      title.innerHTML = feedback.title || "";
       feedbackText.appendChild(title);
 
       if (feedback.subtitle) {
-        var subtitle = document.createElement('div');
-        subtitle.innerHTML = feedback.subtitle || '';
+        var subtitle = document.createElement("div");
+        subtitle.innerHTML = feedback.subtitle || "";
         feedbackText.appendChild(subtitle);
       }
 
-      var navButton = document.createElement('button');
+      var navButton = document.createElement("button");
       navButton.onclick = function () {
-        self.trigger('navigated', {
+        self.trigger("navigated", {
           nextContentId: nextContentId,
-          chosenAlternative: chosenAlternativeIndex
+          chosenAlternative: chosenAlternativeIndex,
         });
       };
 
@@ -212,8 +274,8 @@ H5P.BranchingQuestion = (function () {
       feedbackContent.appendChild(navButton);
 
       var KEYCODE_TAB = 9;
-      feedbackContent.addEventListener('keydown', function (e) {
-        var isTabPressed = (e.key === 'Tab' || e.keyCode === KEYCODE_TAB);
+      feedbackContent.addEventListener("keydown", function (e) {
+        var isTabPressed = e.key === "Tab" || e.keyCode === KEYCODE_TAB;
         if (isTabPressed) {
           e.preventDefault();
           return;
@@ -228,18 +290,18 @@ H5P.BranchingQuestion = (function () {
     //https://hiddedevries.nl/en/blog/2017-01-29-using-javascript-to-trap-focus-in-an-element
     var trapFocus = function (element) {
       var KEYCODE_TAB = 9;
-      element.addEventListener('keydown', function (e) {
-        var isTabPressed = (e.key === 'Tab' || e.keyCode === KEYCODE_TAB);
+      element.addEventListener("keydown", function (e) {
+        var isTabPressed = e.key === "Tab" || e.keyCode === KEYCODE_TAB;
 
         if (!isTabPressed) {
           return;
         }
 
-        if (e.shiftKey && document.activeElement === self.firstFocusable) /* shift + tab */ {
-          self.lastFocusable.focus();
+        if (e.shiftKey && document.activeElement === self.firstFocusable) {
+          /* shift + tab */ self.lastFocusable.focus();
           e.preventDefault();
-        }
-        else if (document.activeElement === self.lastFocusable) { /* tab */
+        } else if (document.activeElement === self.lastFocusable) {
+          /* tab */
           self.firstFocusable.focus();
           e.preventDefault();
         }
@@ -255,11 +317,11 @@ H5P.BranchingQuestion = (function () {
       const self = this;
 
       const alternativeBack = createAlternativeContainer(text);
-      alternativeBack.classList.add('h5p-branching-question-alternative-back');
+      alternativeBack.classList.add("h5p-branching-question-alternative-back");
 
-      alternativeBack.addEventListener('click', function () {
-        self.trigger('navigated', {
-          reverse: true
+      alternativeBack.addEventListener("click", function () {
+        self.trigger("navigated", {
+          reverse: true,
         });
       });
 
@@ -273,12 +335,12 @@ H5P.BranchingQuestion = (function () {
      * @see contract at {@link https://h5p.org/documentation/developers/contracts#guides-header-6}
      */
     self.getXAPIData = function () {
-      var xAPIEvent = this.createXAPIEventTemplate('answered');
+      var xAPIEvent = this.createXAPIEventTemplate("answered");
       addQuestionToXAPI(xAPIEvent);
       xAPIEvent.setScoredResult(undefined, undefined, self, true);
       xAPIEvent.data.statement.result.response = answered;
       return {
-        statement: xAPIEvent.data.statement
+        statement: xAPIEvent.data.statement,
       };
     };
 
@@ -288,29 +350,32 @@ H5P.BranchingQuestion = (function () {
      * @param {H5P.XAPIEvent} xAPIEvent
      */
     var addQuestionToXAPI = function (xAPIEvent) {
-      const converter = document.createElement('div');
+      const converter = document.createElement("div");
 
-      var definition = xAPIEvent.getVerifiedStatementValue(['object', 'definition']);
+      var definition = xAPIEvent.getVerifiedStatementValue([
+        "object",
+        "definition",
+      ]);
       converter.innerHTML = parameters.branchingQuestion.question;
       definition.description = {
-        'en-US': converter.innerText
+        "en-US": converter.innerText,
       };
-      definition.type = 'http://adlnet.gov/expapi/activities/cmi.interaction';
-      definition.interactionType = 'choice';
+      definition.type = "http://adlnet.gov/expapi/activities/cmi.interaction";
+      definition.interactionType = "choice";
       definition.correctResponsesPattern = [];
       definition.choices = [];
       definition.extensions = {
-        'https://h5p.org/x-api/no-correct-answer': 1
+        "https://h5p.org/x-api/no-correct-answer": 1,
       };
 
       const alternatives = parameters.branchingQuestion.alternatives;
       for (let i = 0; i < alternatives.length; i++) {
         converter.innerHTML = alternatives[i].text;
         definition.choices[i] = {
-          'id': i + '',
-          'description': {
-            'en-US': converter.innerText
-          }
+          id: i + "",
+          description: {
+            "en-US": converter.innerText,
+          },
         };
       }
     };
@@ -322,11 +387,14 @@ H5P.BranchingQuestion = (function () {
       // Disable back button of underlying library screen
       self.parent.disableBackButton();
 
-      var questionContainer = document.createElement('div');
-      questionContainer.classList.add('h5p-branching-question-container');
+      var questionContainer = document.createElement("div");
+      questionContainer.classList.add("h5p-branching-question-container");
 
       var branchingQuestion = createWrapper(parameters);
-      branchingQuestion = appendMultiChoiceSection(parameters, branchingQuestion);
+      branchingQuestion = appendMultiChoiceSection(
+        parameters,
+        branchingQuestion
+      );
       trapFocus(branchingQuestion);
 
       questionContainer.appendChild(branchingQuestion);
@@ -336,5 +404,4 @@ H5P.BranchingQuestion = (function () {
   }
 
   return BranchingQuestion;
-
 })();
