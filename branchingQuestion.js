@@ -61,6 +61,7 @@ H5P.BranchingQuestion = (function () {
         alternativesDropdown.appendChild(option);
       });
 
+      alternativesDropdown.classList.add("h5p-multichoice-dropdown-select")
       return alternativesDropdown;
     };
 
