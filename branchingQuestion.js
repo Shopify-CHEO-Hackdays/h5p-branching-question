@@ -8,7 +8,7 @@ H5P.BranchingQuestion = (function ($) {
     H5P.EventDispatcher.call(self);
     this.container = null;
     let answered;
-    this.initialTime = parameters.behaviour;
+    this.initialTime = parameters.behaviour || 30;
     this.timeRemaining = this.initialTime;
     this.started = false;
     this.timerInterval = null;
@@ -44,28 +44,37 @@ H5P.BranchingQuestion = (function ($) {
       var wrapper = document.createElement('div');
       wrapper.classList.add('h5p-branching-question');
 
+      const header = document.createElement('header');
+
       var icon = document.createElement('img');
       icon.classList.add('h5p-branching-question-icon');
       icon.src = self.getLibraryFilePath('branching-question-icon.svg');
 
-      wrapper.appendChild(icon);
+      const timer = appendTimer();
+
+      header.appendChild(icon);
+      header.appendChild(timer);
+      wrapper.appendChild(header);
 
       return wrapper;
     };
 
-    var appendTimer = (wrapper) => {
+    var appendTimer = () => {
       console.log(parameters.behaviour);
       var timerWrapper = document.createElement('div');
       timerWrapper.classList.add('h5p-timer-wrapper');
 
       var canvas = document.createElement('canvas');
       canvas.classList.add('h5p-timer-canvas');
+      canvas.width = 260;
+      canvas.height = 200;
+      canvas.style.width = "130px";
+      canvas.style.height = "100px";
       updateCanvas(canvas, this.timeRemaining, this.initialTime);
 
       timerWrapper.append(canvas);
-      wrapper.appendChild(timerWrapper);
 
-      return wrapper;
+      return timerWrapper;
     }
 
     var appendMultiChoiceSection = function (parameters, wrapper) {
@@ -342,44 +351,66 @@ H5P.BranchingQuestion = (function ($) {
       const totalLength = (2 * Math.PI) * 0.75;
       const percentComplete = 1 - timeRemaining / initialTime;
       const context = canvas.getContext('2d');
+      const middleX = canvas.width / 4;
+      const middleY = canvas.height / 3.25;
       context.clearRect(0, 0, canvas.width, canvas.height);
-      // context.width = 400;
-      // context.height = 400;
       context.save();
+      context.scale(2,2);
+      // draw background
+      context.beginPath()
+      context.arc(middleX, middleY, 60, 0, 2 * Math.PI);
+      context.fillStyle = "white";
+      context.fill();
       context.fillStyle = 'black';
-      context.font = "15px monaco";
+      context.font = "15px H5PFontAwesome4";
       context.textAlign = "center";
-      context.fillText(`${Math.ceil(timeRemaining)}s`, 150, 75);
-      context.translate(150, 75);
+      context.fillText(`${Math.ceil(timeRemaining)}s`, middleX, middleY);
+      context.translate(middleX, middleY);
       context.rotate(Math.PI * 0.75);
-      context.translate(-150, -75);
-      context.strokeStyle = "green";
+      context.translate(-middleX, -middleY);
+      context.strokeStyle = "green"
+      if (percentComplete > 0.8) {
+        context.strokeStyle = "red";
+      };
       context.beginPath();
-      context.arc(150, 75, 50, totalLength * percentComplete, totalLength);
+      context.arc(middleX, middleY, 45, totalLength * percentComplete, totalLength);
       context.lineWidth = 10;
       context.stroke();
       context.strokeStyle = "gray";
       context.beginPath();
-      context.arc(150, 75, 50, 0, totalLength * percentComplete);
+      context.arc(middleX, middleY, 45, 0, totalLength * percentComplete);
       context.stroke();
       context.restore();
+
       // context.rotate(-Math.PI * 0.75);
     }
 
     self.on("domChanged", (e) => {
+      console.log(this)
       if (e.data.$target[0].className === "h5p-branching-question-wrapper" && !this.started) {
+        console.log("parameters", parameters);
+        const nextContentId = this.parent.currentId - 1; 
         this.started = true;
         this.timerInterval = setInterval(() => {
           const canvas = document.querySelector('canvas');
+          if (!canvas) clearInterval(this.timerInterval);
           updateCanvas(canvas, this.initialTime, parseFloat(this.timeRemaining.toFixed(1)));
-          console.log(this.timeRemaining.toFixed(1));
-          if (this.timeRemaining.toFixed(1) === "0.0") clearInterval(this.timerInterval);
+          if (parseFloat(this.timeRemaining.toFixed(1)) < 0) {
+            clearInterval(this.timerInterval);
+
+            var nextScreen = {
+              nextContentId,
+            };
+
+            self.trigger('navigated', nextScreen);
+          };
           this.timeRemaining -= .1;
         }, 100);
       }
     });
 
     self.on('navigated', () => clearInterval(this.timerInterval));
+    self.on('*', (e) => console.log(e));
 
     self.attach = function ($container) {
       // Disable back button of underlying library screen
@@ -392,11 +423,10 @@ H5P.BranchingQuestion = (function ($) {
       branchingQuestion = appendMultiChoiceSection(parameters, branchingQuestion);
       trapFocus(branchingQuestion);
 
-      var timer = createWrapper(parameters);
-      timer = appendTimer(timer);
+      const timer = appendTimer();
 
       questionContainer.appendChild(branchingQuestion);
-      questionContainer.appendChild(timer);
+      // branchingQuestion.prepend(timer);
       $container.append(questionContainer);
       this.container = $container[0];
     };

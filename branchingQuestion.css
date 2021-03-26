@@ -13,6 +13,12 @@
   position: relative;
 }
 
+header .h5p-timer-canvas {
+  position: absolute;
+  right: 10px;
+  top: -80px;
+}
+
 .h5p-multichoice-wrapper {
   margin-top: 1em;
   overflow-y: auto;
